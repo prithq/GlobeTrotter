@@ -1,7 +1,11 @@
 import express from "express";
 import mongoose from "mongoose";
 import crypto from "crypto";
+<<<<<<< HEAD
 import {tripModel} from "../models/trip.model.js";
+=======
+import { tripModel } from "../models/trip.model.js";
+>>>>>>> 8014e4a3cc85e7f1998143352da6dfbd9836f836
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -20,7 +24,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "name, startDate and endDate are required" });
     }
 
-    const trip = await Trip.create({
+    const trip = await tripModel.create({
       userId: req.user.id,
       name,
       description,
@@ -44,13 +48,13 @@ router.get("/", async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [trips, total] = await Promise.all([
-      Trip.find({ userId: req.user.id })
+      tripModel.find({ userId: req.user.id })
         .select("name description startDate endDate coverPhotoUrl isPublic stops createdAt")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Trip.countDocuments({ userId: req.user.id })
+      tripModel.countDocuments({ userId: req.user.id })
     ]);
 
     const shaped = trips.map(t => ({
@@ -76,7 +80,7 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ message: "Invalid trip id" });
     }
 
-    const trip = await Trip.findOne({ _id: id, userId: req.user.id });
+    const trip = await tripModel.findOne({ _id: id, userId: req.user.id });
 
     if (!trip) {
       return res.status(404).json({ message: "Trip not found" });
@@ -98,7 +102,7 @@ router.put("/:id", async (req, res) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     }
 
-    const trip = await Trip.findOneAndUpdate(
+    const trip = await tripModel.findOneAndUpdate(
       { _id: id, userId: req.user.id },
       { $set: updates },
       { new: true, runValidators: true }
@@ -118,7 +122,7 @@ router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const trip = await Trip.findOneAndDelete({ _id: id, userId: req.user.id });
+    const trip = await tripModel.findOneAndDelete({ _id: id, userId: req.user.id });
 
     if (!trip) {
       return res.status(404).json({ message: "Trip not found" });
@@ -134,7 +138,7 @@ router.patch("/:id/publish", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const trip = await Trip.findOne({ _id: id, userId: req.user.id });
+    const trip = await tripModel.findOne({ _id: id, userId: req.user.id });
     if (!trip) {
       return res.status(404).json({ message: "Trip not found" });
     }
@@ -147,7 +151,7 @@ router.patch("/:id/publish", async (req, res) => {
       let exists = true;
       while (exists) {
         slug = generateSlug();
-        exists = await Trip.exists({ publicSlug: slug });
+        exists = await tripModel.exists({ publicSlug: slug });
       }
       trip.publicSlug = slug;
     }
@@ -164,4 +168,238 @@ router.patch("/:id/publish", async (req, res) => {
   }
 });
 
+router.post("/:tripId/stops", async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const { cityId, cityName, startDate, endDate } = req.body;
+
+    if (!cityId || !cityName || !startDate || !endDate) {
+      return res.status(400).json({ message: "cityId, cityName, startDate and endDate are required" });
+    }
+
+    const trip = await tripModel.findOne({ _id: tripId, userId: req.user.id });
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    const orderIndex = trip.stops.length;
+
+    trip.stops.push({
+      cityId,
+      cityName,
+      startDate,
+      endDate,
+      orderIndex,
+      activities: []
+    });
+
+    await trip.save();
+
+    res.status(201).json(trip);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.put("/:tripId/stops/:stopId", async (req, res) => {
+  try {
+    const { tripId, stopId } = req.params;
+    const allowedFields = ["cityName", "startDate", "endDate"];
+
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) updates[`stops.$[stop].${field}`] = req.body[field];
+    }
+
+    const trip = await tripModel.findOneAndUpdate(
+      { _id: tripId, userId: req.user.id },
+      { $set: updates },
+      {
+        arrayFilters: [{ "stop._id": stopId }],
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    res.json(trip);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.delete("/:tripId/stops/:stopId", async (req, res) => {
+  try {
+    const { tripId, stopId } = req.params;
+
+    const trip = await tripModel.findOneAndUpdate(
+      { _id: tripId, userId: req.user.id },
+      { $pull: { stops: { _id: stopId } } },
+      { new: true }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    res.json(trip);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/:tripId/stops/reorder", async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const { orderedStopIds } = req.body;
+
+    if (!Array.isArray(orderedStopIds)) {
+      return res.status(400).json({ message: "orderedStopIds must be an array" });
+    }
+
+    const trip = await tripModel.findOne({ _id: tripId, userId: req.user.id });
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    orderedStopIds.forEach((stopId, index) => {
+      const stop = trip.stops.id(stopId);
+      if (stop) stop.orderIndex = index;
+    });
+
+    await trip.save();
+
+    res.json(trip);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+router.post("/:tripId/stops/:stopId/activities", async (req, res) => {
+  try {
+    const { tripId, stopId } = req.params;
+    const { activityId, name, category, scheduledDate, scheduledTime, cost } = req.body;
+
+    if (!activityId || !name || !category || cost === undefined) {
+      return res.status(400).json({ message: "activityId, name, category and cost are required" });
+    }
+
+    const trip = await tripModel.findOne({ _id: tripId, userId: req.user.id });
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    const stop = trip.stops.id(stopId);
+    if (!stop) {
+      return res.status(404).json({ message: "Stop not found" });
+    }
+
+    const orderIndex = stop.activities.length;
+
+    stop.activities.push({
+      activityId,
+      name,
+      category,
+      scheduledDate,
+      scheduledTime,
+      orderIndex,
+      cost
+    });
+
+    await trip.save();
+
+    res.status(201).json(trip);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.put("/:tripId/stops/:stopId/activities/:activityId", async (req, res) => {
+  try {
+    const { tripId, stopId, activityId } = req.params;
+    const allowedFields = ["scheduledDate", "scheduledTime", "cost"];
+
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[`stops.$[stop].activities.$[activity].${field}`] = req.body[field];
+      }
+    }
+
+    const trip = await tripModel.findOneAndUpdate(
+      { _id: tripId, userId: req.user.id },
+      { $set: updates },
+      {
+        arrayFilters: [{ "stop._id": stopId }, { "activity._id": activityId }],
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    res.json(trip);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.delete("/:tripId/stops/:stopId/activities/:activityId", async (req, res) => {
+  try {
+    const { tripId, stopId, activityId } = req.params;
+
+    const trip = await tripModel.findOneAndUpdate(
+      { _id: tripId, userId: req.user.id },
+      { $pull: { "stops.$[stop].activities": { _id: activityId } } },
+      {
+        arrayFilters: [{ "stop._id": stopId }],
+        new: true
+      }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    res.json(trip);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/:tripId/stops/:stopId/activities/reorder", async (req, res) => {
+  try {
+    const { tripId, stopId } = req.params;
+    const { orderedActivityIds } = req.body;
+
+    if (!Array.isArray(orderedActivityIds)) {
+      return res.status(400).json({ message: "orderedActivityIds must be an array" });
+    }
+
+    const trip = await tripModel.findOne({ _id: tripId, userId: req.user.id });
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    const stop = trip.stops.id(stopId);
+    if (!stop) {
+      return res.status(404).json({ message: "Stop not found" });
+    }
+
+    orderedActivityIds.forEach((activityId, index) => {
+      const activity = stop.activities.id(activityId);
+      if (activity) activity.orderIndex = index;
+    });
+
+    await trip.save();
+
+    res.json(trip);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 export default router;
