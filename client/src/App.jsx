@@ -4,7 +4,15 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import DashboardPage from './pages/DashboardPage'; // Add this import
+import DashboardPage from './pages/DashboardPage';
+import CreateTripPage from './pages/CreateTripPage';
+import ItineraryBuilderPage from './pages/ItineraryBuilderPage';
+import ItineraryViewPage from './pages/ItineraryViewPage';
+import CitySearchPage from './pages/CitySearchPage';
+import ActivitySearchPage from './pages/ActivitySearchPage';
+import BudgetPage from './pages/BudgetPage';
+import CalendarPage from './pages/CalendarPage';
+import ProfilePage from './pages/ProfilePage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -27,8 +35,11 @@ const ProtectedRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      
+      {/* Protected Routes */}
       <Route
         path="/dashboard"
         element={
@@ -37,6 +48,72 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/create-trip"
+        element={
+          <ProtectedRoute>
+            <CreateTripPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/build"
+        element={
+          <ProtectedRoute>
+            <ItineraryBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/itinerary"
+        element={
+          <ProtectedRoute>
+            <ItineraryViewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/calendar"
+        element={
+          <ProtectedRoute>
+            <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/budget"
+        element={
+          <ProtectedRoute>
+            <BudgetPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cities"
+        element={
+          <ProtectedRoute>
+            <CitySearchPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/activities"
+        element={
+          <ProtectedRoute>
+            <ActivitySearchPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Default */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

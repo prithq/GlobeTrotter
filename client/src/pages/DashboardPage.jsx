@@ -4,13 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { 
   HiSearch, 
   HiPlus, 
-  HiGlobe, 
   HiCalendar, 
   HiLocationMarker, 
   HiUsers,
   HiStar,
-  HiFire,
-  HiTrendingUp,
   HiChevronRight
 } from 'react-icons/hi';
 import { toast } from 'react-hot-toast';
@@ -19,19 +16,17 @@ const DashboardPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
   const [recentTrips, setRecentTrips] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Mock data - Replace with actual API calls
   useEffect(() => {
-    // Simulate loading trips from API
     const loadTrips = async () => {
       setIsLoading(true);
       // In production: const response = await tripAPI.getTrips();
       const mockTrips = [
         {
-          id: 1,
+          id: '1',
           name: 'European Summer Adventure',
           destination: 'Paris, Rome, Barcelona',
           startDate: '2026-06-15',
@@ -42,7 +37,7 @@ const DashboardPage = () => {
           status: 'upcoming'
         },
         {
-          id: 2,
+          id: '2',
           name: 'Japan Cherry Blossom Tour',
           destination: 'Tokyo, Kyoto, Osaka',
           startDate: '2026-03-20',
@@ -53,7 +48,7 @@ const DashboardPage = () => {
           status: 'planning'
         },
         {
-          id: 3,
+          id: '3',
           name: 'Bali Relaxation Retreat',
           destination: 'Ubud, Seminyak, Nusa Dua',
           startDate: '2025-12-01',
@@ -145,6 +140,11 @@ const DashboardPage = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Navigate to trip builder
+  const handleTripClick = (tripId) => {
+    navigate(`/trip/${tripId}/build`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
@@ -221,15 +221,24 @@ const DashboardPage = () => {
             <HiPlus className="h-5 w-5" />
             <span className="font-medium">Plan a Trip</span>
           </Link>
-          <button className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100">
+          <button 
+            onClick={() => navigate('/cities')}
+            className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100"
+          >
             <HiLocationMarker className="h-5 w-5 text-blue-600" />
             <span className="font-medium text-gray-700">Explore Cities</span>
           </button>
-          <button className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100">
+          <button 
+            onClick={() => navigate('/calendar')}
+            className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100"
+          >
             <HiCalendar className="h-5 w-5 text-blue-600" />
             <span className="font-medium text-gray-700">My Calendar</span>
           </button>
-          <button className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100">
+          <button 
+            onClick={() => navigate('/shared-trips')}
+            className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100"
+          >
             <HiUsers className="h-5 w-5 text-blue-600" />
             <span className="font-medium text-gray-700">Shared Trips</span>
           </button>
@@ -274,6 +283,7 @@ const DashboardPage = () => {
               <div
                 key={destination.id}
                 className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                onClick={() => navigate(`/city/${destination.id}`)}
               >
                 <div className="relative h-48 overflow-hidden">
                   <img
@@ -337,7 +347,7 @@ const DashboardPage = () => {
                 <div
                   key={trip.id}
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
-                  onClick={() => navigate(`/trip/${trip.id}`)}
+                  onClick={() => handleTripClick(trip.id)}
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
@@ -349,6 +359,11 @@ const DashboardPage = () => {
                       <span className={`${getStatusColor(trip.status)} px-3 py-1 rounded-full text-xs font-medium capitalize flex items-center space-x-1`}>
                         <span>{getStatusEmoji(trip.status)}</span>
                         <span>{trip.status}</span>
+                      </span>
+                    </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                      <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/50 px-4 py-2 rounded-lg">
+                        Build Itinerary →
                       </span>
                     </div>
                   </div>
@@ -369,8 +384,14 @@ const DashboardPage = () => {
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                       <span className="text-sm text-gray-600">{trip.days} days</span>
-                      <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-                        View Trip <HiChevronRight className="h-4 w-4 ml-1" />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTripClick(trip.id);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                      >
+                        Build Itinerary <HiChevronRight className="h-4 w-4 ml-1" />
                       </button>
                     </div>
                   </div>
