@@ -1,6 +1,6 @@
-import dns from "dns";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+import dns from "dns";
 
 dotenv.config();
 
@@ -15,15 +15,17 @@ const connectDB = async () => {
       throw new Error("MONGODB_URI is not defined");
     }
 
-    const connection = await mongoose.connect(
-      process.env.MONGODB_URI
-    );
+    console.log("Connecting to MongoDB Atlas...");
+
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000
+    });
 
     console.log("MongoDB connected successfully");
-    console.log("Database:", connection.connection.name);
-    console.log("Host:", connection.connection.host);
+    console.log("Database:", mongoose.connection.name);
+    console.log("Host:", mongoose.connection.host);
 
-    return connection;
+    return mongoose.connection;
   } catch (error) {
     console.error("MongoDB connection error:", error.message);
     throw error;
