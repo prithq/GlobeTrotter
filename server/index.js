@@ -6,6 +6,7 @@ import tripRoutes from "./routes/tripRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import cityRoutes from "./routes/cityRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -26,6 +27,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/cities", cityRoutes);
 const PORT = process.env.PORT || 8000;
 
 mongoose.connect(process.env.MONGO_URI)
