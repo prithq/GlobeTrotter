@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import tripRoutes from "./routes/tripRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.get("/health", (req, res) => {
   res.send("working");
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 
 const PORT = process.env.PORT || 8000;
