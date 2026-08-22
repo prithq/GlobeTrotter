@@ -30,6 +30,34 @@ const DashboardPage = () => {
   const [userLocationName, setUserLocationName] = useState('Detecting location...');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Live dynamic search states
+  const [liveSearchResults, setLiveSearchResults] = useState([]);
+  const [isSearchingLive, setIsSearchingLive] = useState(false);
+  const [showLiveDropdown, setShowLiveDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setLiveSearchResults([]);
+      setShowLiveDropdown(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingLive(true);
+      setShowLiveDropdown(true);
+      try {
+        const response = await cityAPI.getCities({ search: searchQuery.trim(), limit: 6 });
+        setLiveSearchResults(response.data?.data || []);
+      } catch (err) {
+        console.warn('Live search error:', err.message);
+      } finally {
+        setIsSearchingLive(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     detectUserLocation();
   }, []);
@@ -184,6 +212,54 @@ const DashboardPage = () => {
                   placeholder="Search destinations, city stops, or travel activities..."
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400"
                 />
+
+                {/* Floating Live Search Dropdown */}
+                {showLiveDropdown && searchQuery.trim() && (
+                  <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden max-h-96 overflow-y-auto">
+                    {isSearchingLive ? (
+                      <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        Searching live destinations with OpenAI...
+                      </div>
+                    ) : liveSearchResults.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        <div className="px-4 py-2 bg-gray-50 text-[11px] font-bold uppercase text-gray-500 tracking-wider flex items-center justify-between">
+                          <span>Live AI Search Results</span>
+                          <span>{liveSearchResults.length} places found</span>
+                        </div>
+                        {liveSearchResults.map((city) => (
+                          <div
+                            key={city._id || city.name}
+                            onClick={() => {
+                              setShowLiveDropdown(false);
+                              navigate(`/cities?search=${encodeURIComponent(city.name)}`);
+                            }}
+                            className="p-3.5 hover:bg-blue-50/50 cursor-pointer flex items-center justify-between transition-colors group"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={city.imageUrl || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=200'}
+                                alt={city.name}
+                                className="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-xs"
+                              />
+                              <div>
+                                <h4 className="font-bold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
+                                  {city.name}
+                                </h4>
+                                <p className="text-xs text-gray-500">{city.country} • {city.region}</p>
+                              </div>
+                            </div>
+                            <HiChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-xs text-gray-500">
+                        Press Enter or click Search to find global destination "{searchQuery}".
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <button 
                 type="submit"
