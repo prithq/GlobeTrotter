@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import crypto from "crypto";
-import Trip from "../models/Trip.js";
+import Trip from "../models/trip.model.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
