@@ -1,5 +1,15 @@
 {
-  "dependencies": {
-    "nodemailer": "^9.0.5"
+  "name": "globetrotter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GlobeTrotter travel planning application",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "install-all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
