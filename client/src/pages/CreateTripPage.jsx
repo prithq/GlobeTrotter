@@ -83,7 +83,6 @@ const CreateTripPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.name || !formData.startDate || !formData.endDate) {
       toast.error('Please fill in all required fields');
       return;
@@ -103,16 +102,52 @@ const CreateTripPage = () => {
     try {
       const tripData = {
         name: formData.name,
-        description: `${formData.name} trip`,
+        description: `${formData.name} trip across ${tripPlaces.join(', ')}`,
         startDate: formData.startDate,
         endDate: formData.endDate,
         coverPhotoUrl: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
       };
 
       const response = await axiosInstance.post('/trips', tripData);
-      
-      toast.success('Trip created successfully! 🎉');
-      navigate(`/trip/${response.data._id}`);
+      const newTrip = response.data;
+
+      // Add stops for each destination city
+      const startMs = new Date(formData.startDate).getTime();
+      const endMs = new Date(formData.endDate).getTime();
+      const totalDays = Math.max(1, Math.ceil((endMs - startMs) / (1000 * 60 * 60 * 24)) + 1);
+      const daysPerStop = Math.max(1, Math.floor(totalDays / tripPlaces.length));
+
+      // Fetch all cities from backend to match cityId
+      const citiesRes = await axiosInstance.get('/cities?limit=100');
+      const allCities = citiesRes.data?.data || [];
+
+      let currentStart = new Date(formData.startDate);
+
+      for (let i = 0; i < tripPlaces.length; i++) {
+        const placeName = tripPlaces[i];
+        const matchedCity = allCities.find(c => c.name.toLowerCase() === placeName.toLowerCase()) || allCities[0];
+        
+        const stopEnd = new Date(currentStart);
+        const addDays = (i === tripPlaces.length - 1) 
+          ? Math.max(0, Math.floor((endMs - currentStart.getTime()) / (1000 * 60 * 60 * 24)))
+          : daysPerStop - 1;
+        stopEnd.setDate(stopEnd.getDate() + addDays);
+
+        if (matchedCity?._id) {
+          await axiosInstance.post(`/trips/${newTrip._id}/stops`, {
+            cityId: matchedCity._id,
+            cityName: placeName,
+            startDate: currentStart.toISOString().slice(0, 10),
+            endDate: stopEnd.toISOString().slice(0, 10),
+          });
+        }
+
+        currentStart = new Date(stopEnd);
+        currentStart.setDate(currentStart.getDate() + 1);
+      }
+
+      toast.success('Trip created with stops! 🎉');
+      navigate(`/trip/${newTrip._id}/build`);
     } catch (error) {
       toast.error('Failed to create trip. Please try again.');
     } finally {

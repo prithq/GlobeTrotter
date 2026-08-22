@@ -112,6 +112,15 @@ Respond ONLY with a valid JSON object in this exact shape, no markdown, no expla
   // Strip markdown code fences if GPT wraps with them
   raw = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
 
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (match) {
+    try {
+      return JSON.parse(match[0]);
+    } catch (err) {
+      console.error("JSON parse failed for budget estimate match:", err.message);
+    }
+  }
+
   try {
     return JSON.parse(raw);
   } catch {

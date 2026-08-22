@@ -12,110 +12,40 @@ import {
 } from 'react-icons/hi';
 import { toast } from 'react-hot-toast';
 
+import { tripAPI } from '../api/trips';
+import { cityAPI } from '../api/cities';
+
 const DashboardPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [recentTrips, setRecentTrips] = useState([]);
+  const [popularCities, setPopularCities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - Replace with actual API calls
   useEffect(() => {
-    const loadTrips = async () => {
+    const loadDashboardData = async () => {
       setIsLoading(true);
-      // In production: const response = await tripAPI.getTrips();
-      const mockTrips = [
-        {
-          id: '1',
-          name: 'European Summer Adventure',
-          destination: 'Paris, Rome, Barcelona',
-          startDate: '2026-06-15',
-          endDate: '2026-06-30',
-          coverPhoto: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800',
-          stops: 5,
-          days: 15,
-          status: 'upcoming'
-        },
-        {
-          id: '2',
-          name: 'Japan Cherry Blossom Tour',
-          destination: 'Tokyo, Kyoto, Osaka',
-          startDate: '2026-03-20',
-          endDate: '2026-04-05',
-          coverPhoto: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800',
-          stops: 4,
-          days: 16,
-          status: 'planning'
-        },
-        {
-          id: '3',
-          name: 'Bali Relaxation Retreat',
-          destination: 'Ubud, Seminyak, Nusa Dua',
-          startDate: '2025-12-01',
-          endDate: '2025-12-10',
-          coverPhoto: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800',
-          stops: 3,
-          days: 9,
-          status: 'completed'
-        }
-      ];
-      setRecentTrips(mockTrips);
-      setIsLoading(false);
-    };
-    loadTrips();
-  }, []);
+      try {
+        const [tripsRes, citiesRes] = await Promise.allSettled([
+          tripAPI.getTrips(1, 6),
+          cityAPI.getCities({ sort: 'popularity', limit: 8 })
+        ]);
 
-  // Popular destinations data
-  const popularDestinations = [
-    {
-      id: 1,
-      name: 'Paris, France',
-      image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600',
-      costIndex: '$$',
-      popularity: 98,
-      region: 'Europe'
-    },
-    {
-      id: 2,
-      name: 'Tokyo, Japan',
-      image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600',
-      costIndex: '$$$',
-      popularity: 95,
-      region: 'Asia'
-    },
-    {
-      id: 3,
-      name: 'New York, USA',
-      image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600',
-      costIndex: '$$$',
-      popularity: 92,
-      region: 'North America'
-    },
-    {
-      id: 4,
-      name: 'Bali, Indonesia',
-      image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600',
-      costIndex: '$',
-      popularity: 90,
-      region: 'Asia'
-    },
-    {
-      id: 5,
-      name: 'Rome, Italy',
-      image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600',
-      costIndex: '$$',
-      popularity: 88,
-      region: 'Europe'
-    },
-    {
-      id: 6,
-      name: 'Dubai, UAE',
-      image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600',
-      costIndex: '$$$$',
-      popularity: 85,
-      region: 'Middle East'
-    }
-  ];
+        if (tripsRes.status === 'fulfilled') {
+          setRecentTrips(tripsRes.value.data?.data || []);
+        }
+        if (citiesRes.status === 'fulfilled') {
+          setPopularCities(citiesRes.value.data?.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadDashboardData();
+  }, []);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -229,18 +159,18 @@ const DashboardPage = () => {
             <span className="font-medium text-gray-700">Explore Cities</span>
           </button>
           <button 
-            onClick={() => navigate('/calendar')}
+            onClick={() => navigate('/my-trips')}
             className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100"
           >
             <HiCalendar className="h-5 w-5 text-blue-600" />
-            <span className="font-medium text-gray-700">My Calendar</span>
+            <span className="font-medium text-gray-700">My Trips</span>
           </button>
           <button 
-            onClick={() => navigate('/shared-trips')}
+            onClick={() => navigate('/profile')}
             className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-100"
           >
             <HiUsers className="h-5 w-5 text-blue-600" />
-            <span className="font-medium text-gray-700">Shared Trips</span>
+            <span className="font-medium text-gray-700">Profile Settings</span>
           </button>
         </div>
 
@@ -251,59 +181,40 @@ const DashboardPage = () => {
               <h2 className="text-2xl font-bold text-gray-900">Top Regional Selections</h2>
               <p className="text-gray-600 mt-1">Most popular destinations right now</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white">
-                <option>Group by Region</option>
-                <option>Europe</option>
-                <option>Asia</option>
-                <option>North America</option>
-                <option>South America</option>
-                <option>Africa</option>
-                <option>Oceania</option>
-              </select>
-              <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white">
-                <option>Filter</option>
-                <option>Budget Friendly</option>
-                <option>Luxury</option>
-                <option>Adventure</option>
-                <option>Relaxation</option>
-                <option>Culture</option>
-              </select>
-              <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white">
-                <option>Sort by Popularity</option>
-                <option>Cost: Low to High</option>
-                <option>Cost: High to Low</option>
-                <option>Rating</option>
-              </select>
-            </div>
+            <button
+              onClick={() => navigate('/cities')}
+              className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
+            >
+              Explore All <HiChevronRight className="h-4 w-4 ml-1" />
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {popularDestinations.map((destination) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {popularCities.map((city) => (
               <div
-                key={destination.id}
+                key={city._id}
                 className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
-                onClick={() => navigate(`/city/${destination.id}`)}
+                onClick={() => navigate('/cities')}
               >
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={destination.image}
-                    alt={destination.name}
+                    src={city.imageUrl || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=600'}
+                    alt={city.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center space-x-1">
                     <HiStar className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-semibold">{destination.popularity}%</span>
+                    <span className="text-sm font-semibold">{city.popularityScore}%</span>
                   </div>
                   <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
-                    <span className="text-white text-sm font-medium">{destination.region}</span>
+                    <span className="text-white text-sm font-medium">{city.region}</span>
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 text-lg">{destination.name}</h3>
+                  <h3 className="font-semibold text-gray-900 text-lg">{city.name}, {city.country}</h3>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-sm font-medium text-gray-600">
-                      Cost: {destination.costIndex}
+                      Cost Index: {city.costIndex}%
                     </span>
                     <button className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center">
                       Explore <HiChevronRight className="h-4 w-4 ml-1" />
@@ -315,12 +226,12 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Previous Trips */}
+        {/* Previous / Recent Trips */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Your Previous Trips</h2>
-              <p className="text-gray-600 mt-1">Relive your adventures and plan new ones</p>
+              <h2 className="text-2xl font-bold text-gray-900">Your Trips</h2>
+              <p className="text-gray-600 mt-1">Manage your active and planned adventures</p>
             </div>
             <Link
               to="/my-trips"
@@ -337,7 +248,6 @@ const DashboardPage = () => {
                   <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
                   <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
                   <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
                 </div>
               ))}
             </div>
@@ -345,22 +255,16 @@ const DashboardPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recentTrips.map((trip) => (
                 <div
-                  key={trip.id}
+                  key={trip._id}
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
-                  onClick={() => handleTripClick(trip.id)}
+                  onClick={() => handleTripClick(trip._id)}
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
-                      src={trip.coverPhoto}
+                      src={trip.coverPhotoUrl || 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800'}
                       alt={trip.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute top-3 left-3">
-                      <span className={`${getStatusColor(trip.status)} px-3 py-1 rounded-full text-xs font-medium capitalize flex items-center space-x-1`}>
-                        <span>{getStatusEmoji(trip.status)}</span>
-                        <span>{trip.status}</span>
-                      </span>
-                    </div>
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
                       <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/50 px-4 py-2 rounded-lg">
                         Build Itinerary →
@@ -368,10 +272,10 @@ const DashboardPage = () => {
                     </div>
                   </div>
                   <div className="p-5">
-                    <h3 className="font-semibold text-gray-900 text-lg mb-1 group-hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 text-lg mb-1 group-hover:text-blue-600 transition-colors truncate">
                       {trip.name}
                     </h3>
-                    <p className="text-gray-600 text-sm mb-3">{trip.destination}</p>
+                    {trip.description && <p className="text-gray-600 text-sm mb-3 line-clamp-1">{trip.description}</p>}
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center space-x-1">
                         <HiCalendar className="h-4 w-4" />
@@ -379,15 +283,17 @@ const DashboardPage = () => {
                       </div>
                       <div className="flex items-center space-x-1">
                         <HiLocationMarker className="h-4 w-4" />
-                        <span>{trip.stops} stops</span>
+                        <span>{trip.destinationCount || 0} stops</span>
                       </div>
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                      <span className="text-sm text-gray-600">{trip.days} days</span>
+                      <span className="text-sm text-gray-600">
+                        {Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24)) + 1} days
+                      </span>
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleTripClick(trip.id);
+                          handleTripClick(trip._id);
                         }}
                         className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
                       >

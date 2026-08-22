@@ -256,6 +256,37 @@ console.log("\n📋  Stop Activities");
   }
 }
 
+// ─── ITINERARY, CALENDAR & BUDGET ─────────────────────────────────────────────
+console.log("\n📋  Itinerary, Calendar & Budget");
+{
+  if (TRIP_ID) {
+    const r1 = await req("GET", `/api/trips/${TRIP_ID}/itinerary`);
+    assert("GET /api/trips/:tripId/itinerary → 200", r1.status === 200, JSON.stringify(r1.body));
+
+    const r2 = await req("GET", `/api/trips/${TRIP_ID}/calendar`);
+    assert("GET /api/trips/:tripId/calendar → 200", r2.status === 200, JSON.stringify(r2.body));
+
+    const r3 = await req("GET", `/api/trips/${TRIP_ID}/budget`);
+    assert("GET /api/trips/:tripId/budget → 200", r3.status === 200, JSON.stringify(r3.body));
+
+    // Public trip test
+    const pubRes = await req("PATCH", `/api/trips/${TRIP_ID}/publish`, { isPublic: true });
+    const slug = pubRes.body.publicSlug;
+
+    if (slug) {
+      const pubView = await req("GET", `/api/trips/public/${slug}`, null, false);
+      assert("GET /api/trips/public/:slug (unauthenticated) → 200", pubView.status === 200, JSON.stringify(pubView.body));
+    }
+  }
+}
+
+// ─── AI SUGGESTIONS ───────────────────────────────────────────────────────────
+console.log("\n📋  AI Suggestions");
+{
+  const r = await req("GET", "/api/suggest?place=Paris");
+  assert("GET /api/suggest?place=Paris → 200", r.status === 200, JSON.stringify(r.body));
+}
+
 // ─── CLEANUP ──────────────────────────────────────────────────────────────────
 console.log("\n📋  Cleanup");
 {

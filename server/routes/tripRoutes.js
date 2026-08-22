@@ -4,13 +4,38 @@ import crypto from "crypto";
 import { tripModel } from "../models/trip.model.js";
 import { requireAuth } from "../middleware/auth.js";
 
-const router = express.Router();
+import { buildItinerary } from "../utils/itineraryHelper.js";
 
-router.use(requireAuth);
+const router = express.Router();
 
 function generateSlug(length = 8) {
   return crypto.randomBytes(length).toString("hex").slice(0, length);
 }
+
+/**
+ * GET /api/trips/public/:slug
+ * Read-only public view of a shared trip. Unauthenticated.
+ */
+router.get("/public/:slug", async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const trip = await tripModel.findOne({ publicSlug: slug, isPublic: true });
+    if (!trip) {
+      return res.status(404).json({ message: "Public trip not found" });
+    }
+
+    res.json({
+      ...buildItinerary(trip),
+      coverPhotoUrl: trip.coverPhotoUrl || null,
+      description: trip.description || null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.use(requireAuth);
 
 router.post("/", async (req, res) => {
   try {

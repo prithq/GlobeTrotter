@@ -124,6 +124,18 @@ const ItineraryViewPage = () => {
     return activities.reduce((total, activity) => total + (activity.cost || 0), 0);
   };
 
+  const handleShareTrip = async () => {
+    try {
+      const response = await tripAPI.publishTrip(tripId, true);
+      const slug = response.data.publicSlug;
+      const shareUrl = `${window.location.origin}/shared/${slug}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Trip published! Public link copied to clipboard.');
+    } catch (err) {
+      toast.error('Failed to publish trip');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -148,14 +160,12 @@ const ItineraryViewPage = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors">
-                <HiShare className="h-5 w-5" />
-              </button>
-              <button className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors">
-                <HiDownload className="h-5 w-5" />
-              </button>
-              <button className="p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors">
-                <HiPrinter className="h-5 w-5" />
+              <button 
+                onClick={handleShareTrip}
+                title="Publish & Copy Share Link"
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 text-sm font-medium"
+              >
+                <HiShare className="h-4 w-4" /> Share Publicly
               </button>
               <span className="text-sm text-gray-600 hidden sm:inline">
                 {user?.name || 'Traveler'}
@@ -167,11 +177,27 @@ const ItineraryViewPage = () => {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{itinerary?.tripName}</h1>
-          <p className="text-gray-600 mt-1">
-            {formatDate(itinerary?.startDate)} - {formatDate(itinerary?.endDate)} • {itinerary?.totalDays} days
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{itinerary?.tripName}</h1>
+            <p className="text-gray-600 mt-1">
+              {formatDate(itinerary?.startDate)} - {formatDate(itinerary?.endDate)} • {itinerary?.totalDays} days
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/trip/${tripId}/budget`)}
+              className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+            >
+              <HiCash className="h-4 w-4" /> Budget
+            </button>
+            <button
+              onClick={() => navigate(`/trip/${tripId}/calendar`)}
+              className="px-4 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+            >
+              <HiCalendar className="h-4 w-4" /> Calendar
+            </button>
+          </div>
         </div>
 
         {/* View Toggle */}

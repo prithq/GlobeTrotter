@@ -3,83 +3,11 @@ import mongoose from "mongoose";
 import { tripModel } from "../models/trip.model.js";
 import { requireAuth } from "../middleware/auth.js";
 import { estimateTripBudget } from "../utils/budgetEstimator.js";
+import { expandDays, buildItinerary } from "../utils/itineraryHelper.js";
 
 const router = express.Router({ mergeParams: true });
 
 router.use(requireAuth);
-
-function expandDays(startDate, endDate) {
-  const days = [];
-  const cur = new Date(startDate);
-  const end = new Date(endDate);
-  cur.setUTCHours(0, 0, 0, 0);
-  end.setUTCHours(0, 0, 0, 0);
-  while (cur <= end) {
-    days.push(cur.toISOString().slice(0, 10));
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return days;
-}
-
-function buildItinerary(trip) {
-  const tripStart = new Date(trip.startDate);
-
-  const stops = [...trip.stops]
-    .sort((a, b) => a.orderIndex - b.orderIndex)
-    .map((stop) => {
-      const days = expandDays(stop.startDate, stop.endDate).map((date) => {
-        const dayNumber =
-          Math.floor(
-            (new Date(date) - tripStart) / (1000 * 60 * 60 * 24)
-          ) + 1;
-
-        const activities = [...stop.activities]
-          .filter((a) => {
-            if (!a.scheduledDate) return false;
-            return new Date(a.scheduledDate).toISOString().slice(0, 10) === date;
-          })
-          .sort((a, b) => {
-            if (a.scheduledTime && b.scheduledTime)
-              return a.scheduledTime.localeCompare(b.scheduledTime);
-            return a.orderIndex - b.orderIndex;
-          })
-          .map((a) => ({
-            id: a._id,
-            activityId: a.activityId,
-            name: a.name,
-            category: a.category,
-            scheduledTime: a.scheduledTime || null,
-            cost: a.cost,
-          }));
-
-        return { date, dayNumber, activities };
-      });
-
-      return {
-        stopId: stop._id,
-        cityId: stop.cityId,
-        cityName: stop.cityName,
-        orderIndex: stop.orderIndex,
-        startDate: stop.startDate,
-        endDate: stop.endDate,
-        days,
-      };
-    });
-
-  const totalDays =
-    Math.floor(
-      (new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24)
-    ) + 1;
-
-  return {
-    tripId: trip._id,
-    tripName: trip.name,
-    startDate: trip.startDate,
-    endDate: trip.endDate,
-    totalDays,
-    stops,
-  };
-}
 
 function buildCalendar(trip) {
   const tripStart = new Date(trip.startDate);
@@ -274,25 +202,6 @@ router.get("/budget/estimate", async (req, res) => {
       startDate: trip.startDate,
       endDate: trip.endDate,
       aiEstimate: estimate,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.get("/public/:slug", async (req, res) => {
-  try {
-    const { slug } = req.params;
-
-    const trip = await tripModel.findOne({ publicSlug: slug, isPublic: true });
-    if (!trip) {
-      return res.status(404).json({ message: "Public trip not found" });
-    }
-
-    res.json({
-      ...buildItinerary(trip),
-      coverPhotoUrl: trip.coverPhotoUrl || null,
-      description: trip.description || null,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

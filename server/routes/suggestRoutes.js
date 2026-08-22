@@ -52,11 +52,20 @@ For each place respond ONLY with a valid JSON array (no markdown, no extra text)
 Keep each sentence under 15 words. Return exactly 6 items.
 `;
 
-    const response = await openai.responses.create({
-      model: "gpt-5-mini",
-      tools: [{ type: "web_search_preview" }],
-      input: prompt,
-    });
+    let response;
+    try {
+      response = await openai.responses.create({
+        model: "gpt-5-mini",
+        tools: [{ type: "web_search_preview" }],
+        input: prompt,
+      });
+    } catch (apiErr) {
+      console.warn("Web search preview failed, retrying without web search:", apiErr.message);
+      response = await openai.responses.create({
+        model: "gpt-5-mini",
+        input: prompt,
+      });
+    }
 
     // Extract text from response
     let raw = "";
@@ -73,13 +82,39 @@ Keep each sentence under 15 words. Return exactly 6 items.
     // Strip markdown fences if present
     raw = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
 
-    // Extract JSON array from response (GPT sometimes adds extra text)
+    let suggestions = [];
     const match = raw.match(/\[[\s\S]*\]/);
-    if (!match) {
-      return res.status(500).json({ message: "Could not parse suggestions from AI response" });
+    if (match) {
+      try {
+        suggestions = JSON.parse(match[0]);
+      } catch (e) {
+        console.error("JSON parse failed for AI suggestions:", e.message);
+      }
     }
 
-    const suggestions = JSON.parse(match[0]);
+    if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      const lines = raw.split("\n").filter((l) => l.trim().length > 0);
+      let currentPlace = null;
+      for (const line of lines) {
+        const cleaned = line.replace(/^[\s\-*\d.]+\s*/, "").trim();
+        if (!cleaned) continue;
+        if (cleaned.includes("—") || cleaned.includes(" - ")) {
+          const parts = cleaned.split(/—|-/);
+          currentPlace = {
+            name: parts[0].replace(/[*_]/g, "").trim(),
+            what: parts.slice(1).join(" ").replace(/[*_]/g, "").trim(),
+            why: `Must visit destination in ${place.trim()}`,
+          };
+          suggestions.push(currentPlace);
+        } else if (currentPlace && /why/i.test(cleaned)) {
+          currentPlace.why = cleaned.replace(/^Why( visit)?:?\s*/i, "").replace(/[*_]/g, "").trim();
+        }
+      }
+    }
+
+    if (!suggestions || suggestions.length === 0) {
+      return res.status(500).json({ message: "Could not parse suggestions from AI response" });
+    }
 
     res.json({
       place: place.trim(),

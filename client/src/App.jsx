@@ -13,6 +13,8 @@ import ActivitySearchPage from './pages/ActivitySearchPage';
 import BudgetPage from './pages/BudgetPage';
 import CalendarPage from './pages/CalendarPage';
 import ProfilePage from './pages/ProfilePage';
+import MyTripsPage from './pages/MyTripsPage';
+import SharedTripPage from './pages/SharedTripPage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -35,9 +37,11 @@ const ProtectedRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Auth Routes */}
+      {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/shared/:slug" element={<SharedTripPage />} />
+      <Route path="/trips/public/:slug" element={<SharedTripPage />} />
       
       {/* Protected Routes */}
       <Route
@@ -45,6 +49,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-trips"
+        element={
+          <ProtectedRoute>
+            <MyTripsPage />
           </ProtectedRoute>
         }
       />
@@ -66,6 +78,14 @@ function AppRoutes() {
       />
       <Route
         path="/trip/:tripId/itinerary"
+        element={
+          <ProtectedRoute>
+            <ItineraryViewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/itinerary-view"
         element={
           <ProtectedRoute>
             <ItineraryViewPage />
