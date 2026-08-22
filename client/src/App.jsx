@@ -15,6 +15,7 @@ import CalendarPage from './pages/CalendarPage';
 import ProfilePage from './pages/ProfilePage';
 import MyTripsPage from './pages/MyTripsPage';
 import SharedTripPage from './pages/SharedTripPage';
+import CommunityPage from './pages/CommunityPage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -97,6 +98,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/community"
+        element={
+          <ProtectedRoute>
+            <CommunityPage />
           </ProtectedRoute>
         }
       />

@@ -131,6 +131,10 @@ const DashboardPage = () => {
                 <HiCalendar className="h-4 w-4 text-blue-600" />
                 Trip Calendar
               </Link>
+              <Link to="/community" className="text-sm font-semibold text-gray-700 hover:text-blue-600 flex items-center gap-1 transition-colors">
+                <HiUsers className="h-4 w-4 text-purple-600" />
+                Community
+              </Link>
               <Link to="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
                 {user?.photoUrl ? (
                   <img src={user.photoUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover border border-blue-200 shadow-sm" />
@@ -245,7 +249,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Quick Action Navigation Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <Link
             to="/create-trip"
             className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-4 rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold text-sm"
@@ -273,6 +277,13 @@ const DashboardPage = () => {
           >
             <HiCalendar className="h-5 w-5 text-blue-600" />
             <span>Trip Calendar</span>
+          </button>
+          <button 
+            onClick={() => navigate('/community')}
+            className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-purple-200 font-semibold text-sm text-purple-800"
+          >
+            <HiUsers className="h-5 w-5 text-purple-600" />
+            <span>Community</span>
           </button>
           <button 
             onClick={() => navigate('/profile')}

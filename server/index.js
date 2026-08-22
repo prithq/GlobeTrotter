@@ -8,6 +8,7 @@ import userRoutes from "./routes/userRoutes.js";
 import cityRoutes from "./routes/cityRoutes.js";
 import itineraryRoutes from "./routes/itineraryRoutes.js";
 import suggestRoutes from "./routes/suggestRoutes.js";
+import communityRoutes from "./routes/communityRoutes.js";
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/activities", activityRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/cities", cityRoutes);
 app.use("/api/suggest", suggestRoutes);
+app.use("/api/community", communityRoutes);
 
 const PORT = process.env.PORT || 8000;
 

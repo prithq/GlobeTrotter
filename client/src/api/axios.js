@@ -28,11 +28,15 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || 'Something went wrong';
-    toast.error(message);
+    if (!error.config?.suppressToast && error.code !== 'ERR_CANCELED') {
+      const message = error.response?.data?.message;
+      if (message && message !== 'Something went wrong') {
+        toast.error(message);
+      }
+    }
     
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+    // Handle 401 Unauthorized cleanly
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
