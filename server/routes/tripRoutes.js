@@ -18,10 +18,6 @@ function generateSlug(length = 8) {
   return crypto.randomBytes(length).toString("hex").slice(0, length);
 }
 
-/**
- * GET /api/trips/public/:slug
- * Read-only public view of a shared trip. Unauthenticated.
- */
 router.get("/public/:slug", async (req, res) => {
   try {
     const { slug } = req.params;

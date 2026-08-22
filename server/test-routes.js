@@ -1,9 +1,3 @@
-/**
- * Route test script for GlobeTrotter API
- * Run: node test-routes.js
- * Requires the server to be running on PORT 8000
- */
-
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -44,7 +38,6 @@ function assert(label, condition, info = "") {
   }
 }
 
-// ─── HEALTH ──────────────────────────────────────────────────────────────────
 console.log("\n📋  Health");
 {
   const r = await fetch(`${BASE}/health`);
@@ -52,7 +45,6 @@ console.log("\n📋  Health");
   assert("GET /health → 200", r.status === 200, txt);
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
 console.log("\n📋  Auth");
 {
   // Signup
@@ -81,40 +73,32 @@ console.log("\n📋  Auth");
   assert("POST /api/auth/forgot-password → 200", r5.status === 200, JSON.stringify(r5.body));
 }
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
 console.log("\n📋  Users");
 {
-  // Get own profile
   const r = await req("GET", `/api/users/${USER_ID}`);
   assert("GET /api/users/:id → 200", r.status === 200, JSON.stringify(r.body));
 
-  // Update own profile
   const r2 = await req("PUT", `/api/users/${USER_ID}`, { name: "Updated Name" });
   assert("PUT /api/users/:id → 200", r2.status === 200, JSON.stringify(r2.body));
   assert("PUT /api/users/:id  name updated", r2.body.name === "Updated Name");
 
-  // Invalid id
   const r3 = await req("GET", "/api/users/invalid-id");
   assert("GET /api/users/invalid-id → 400", r3.status === 400);
 }
 
-// ─── CITIES ───────────────────────────────────────────────────────────────────
 console.log("\n📋  Cities");
 {
-  // List (may be empty if no seed data)
   const r = await req("GET", "/api/cities");
   assert("GET /api/cities → 200", r.status === 200, JSON.stringify(r.body));
   assert("GET /api/cities  has data+pagination keys",
     r.body.data !== undefined && r.body.pagination !== undefined);
 
-  // With filters
   const r2 = await req("GET", "/api/cities?search=paris&sort=popularity");
   assert("GET /api/cities?search=paris&sort=popularity → 200", r2.status === 200);
 
   const r3 = await req("GET", "/api/cities?country=France&region=Europe");
   assert("GET /api/cities?country=France&region=Europe → 200", r3.status === 200);
 
-  // Grab a city id if one exists
   if (r.body.data?.length > 0) {
     CITY_ID = r.body.data[0]._id;
     const r4 = await req("GET", `/api/cities/${CITY_ID}`);
@@ -123,12 +107,10 @@ console.log("\n📋  Cities");
     console.log("  ⚠️  SKIP  GET /api/cities/:id  (no cities in DB — seed some data to test)");
   }
 
-  // Invalid id
   const r5 = await req("GET", "/api/cities/invalid-id");
   assert("GET /api/cities/invalid-id → 400", r5.status === 400);
 }
 
-// ─── ACTIVITIES ───────────────────────────────────────────────────────────────
 console.log("\n📋  Activities");
 {
   const r = await req("GET", "/api/activities");
@@ -136,7 +118,6 @@ console.log("\n📋  Activities");
   assert("GET /api/activities  has data+pagination keys",
     r.body.data !== undefined && r.body.pagination !== undefined);
 
-  // With filters
   const r2 = await req("GET", "/api/activities?category=food&costMax=50");
   assert("GET /api/activities?category=food&costMax=50 → 200", r2.status === 200);
 
@@ -152,10 +133,8 @@ console.log("\n📋  Activities");
   assert("GET /api/activities/invalid-id → 400", r4.status === 400);
 }
 
-// ─── TRIPS ────────────────────────────────────────────────────────────────────
 console.log("\n📋  Trips");
 {
-  // Create
   const r = await req("POST", "/api/trips", {
     name: "Test Trip",
     description: "A test",
@@ -165,28 +144,23 @@ console.log("\n📋  Trips");
   assert("POST /api/trips → 201", r.status === 201, JSON.stringify(r.body));
   TRIP_ID = r.body._id || "";
 
-  // List
   const r2 = await req("GET", "/api/trips");
   assert("GET /api/trips → 200", r2.status === 200);
   assert("GET /api/trips  has data+pagination keys",
     r2.body.data !== undefined && r2.body.pagination !== undefined);
 
-  // Get by id
   const r3 = await req("GET", `/api/trips/${TRIP_ID}`);
   assert("GET /api/trips/:id → 200", r3.status === 200);
 
-  // Update
   const r4 = await req("PUT", `/api/trips/${TRIP_ID}`, { name: "Updated Trip" });
   assert("PUT /api/trips/:id → 200", r4.status === 200);
   assert("PUT /api/trips/:id  name updated", r4.body.name === "Updated Trip");
 
-  // Publish toggle
   const r5 = await req("PATCH", `/api/trips/${TRIP_ID}/publish`, { isPublic: true });
   assert("PATCH /api/trips/:id/publish → 200", r5.status === 200);
   assert("PATCH /api/trips/:id/publish  isPublic=true", r5.body.isPublic === true);
 }
 
-// ─── TRIP STOPS ───────────────────────────────────────────────────────────────
 console.log("\n📋  Trip Stops");
 {
   const fakeCityId = CITY_ID || "64f1a2b3c4d5e6f7a8b9c0d1"; // fallback fake id
@@ -199,7 +173,6 @@ console.log("\n📋  Trip Stops");
   assert("POST /api/trips/:tripId/stops → 201", r.status === 201, JSON.stringify(r.body));
   STOP_ID = r.body.stops?.[0]?._id || "";
 
-  // Reorder
   if (STOP_ID) {
     const r2 = await req("PATCH", `/api/trips/${TRIP_ID}/stops/reorder`, {
       orderedStopIds: [STOP_ID]
@@ -207,7 +180,6 @@ console.log("\n📋  Trip Stops");
     assert("PATCH /api/trips/:tripId/stops/reorder → 200", r2.status === 200);
   }
 
-  // Update stop
   if (STOP_ID) {
     const r3 = await req("PUT", `/api/trips/${TRIP_ID}/stops/${STOP_ID}`, {
       cityName: "Paris Updated"
@@ -216,7 +188,6 @@ console.log("\n📋  Trip Stops");
   }
 }
 
-// ─── STOP ACTIVITIES ──────────────────────────────────────────────────────────
 console.log("\n📋  Stop Activities");
 {
   if (STOP_ID) {
@@ -240,13 +211,11 @@ console.log("\n📋  Stop Activities");
         { cost: 35 });
       assert("PUT  .../activities/:activityId → 200", r2.status === 200);
 
-      // Reorder activities
       const r3 = await req("PATCH",
         `/api/trips/${TRIP_ID}/stops/${STOP_ID}/activities/reorder`,
         { orderedActivityIds: [addedActivityId] });
       assert("PATCH .../activities/reorder → 200", r3.status === 200);
 
-      // Delete activity
       const r4 = await req("DELETE",
         `/api/trips/${TRIP_ID}/stops/${STOP_ID}/activities/${addedActivityId}`);
       assert("DELETE .../activities/:activityId → 200", r4.status === 200);
@@ -256,7 +225,6 @@ console.log("\n📋  Stop Activities");
   }
 }
 
-// ─── ITINERARY, CALENDAR & BUDGET ─────────────────────────────────────────────
 console.log("\n📋  Itinerary, Calendar & Budget");
 {
   if (TRIP_ID) {
@@ -269,7 +237,6 @@ console.log("\n📋  Itinerary, Calendar & Budget");
     const r3 = await req("GET", `/api/trips/${TRIP_ID}/budget`);
     assert("GET /api/trips/:tripId/budget → 200", r3.status === 200, JSON.stringify(r3.body));
 
-    // Public trip test
     const pubRes = await req("PATCH", `/api/trips/${TRIP_ID}/publish`, { isPublic: true });
     const slug = pubRes.body.publicSlug;
 
@@ -280,7 +247,6 @@ console.log("\n📋  Itinerary, Calendar & Budget");
   }
 }
 
-// ─── AI SUGGESTIONS ───────────────────────────────────────────────────────────
 console.log("\n📋  AI Suggestions");
 {
   try {
@@ -310,25 +276,20 @@ console.log("\n📋  AI Suggestions");
   }
 }
 
-// ─── CLEANUP ──────────────────────────────────────────────────────────────────
 console.log("\n📋  Cleanup");
 {
-  // Delete stop
   if (STOP_ID) {
     const r = await req("DELETE", `/api/trips/${TRIP_ID}/stops/${STOP_ID}`);
     assert("DELETE /api/trips/:tripId/stops/:stopId → 200", r.status === 200);
   }
 
-  // Delete trip
   const r2 = await req("DELETE", `/api/trips/${TRIP_ID}`);
   assert("DELETE /api/trips/:id → 200", r2.status === 200);
 
-  // Delete own account
   const r3 = await req("DELETE", `/api/users/${USER_ID}`);
   assert("DELETE /api/users/:id → 200", r3.status === 200, JSON.stringify(r3.body));
 }
 
-// ─── SUMMARY ──────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(50)}`);
 console.log(`  Results:  ✅ ${passed} passed   ❌ ${failed} failed`);
 console.log(`${"─".repeat(50)}\n`);

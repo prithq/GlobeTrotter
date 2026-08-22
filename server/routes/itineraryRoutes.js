@@ -171,12 +171,6 @@ router.get("/budget", async (req, res) => {
   }
 });
 
-/**
- * GET /api/trips/:tripId/budget/estimate
- * AI-powered cost estimation using GPT.
- * Estimates transport, accommodation, food, and activity costs per city stop.
- * Spec ref: Trip Budget & Cost Breakdown Screen
- */
 router.get("/budget/estimate", async (req, res) => {
   try {
     const { tripId } = req.params;

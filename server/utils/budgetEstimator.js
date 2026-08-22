@@ -9,15 +9,6 @@ const openai = new OpenAI({
 
 const MODEL = "gpt-5-mini";
 
-/**
- * Given trip data, asks GPT to estimate costs per city stop for:
- * - transportation (flights/trains to reach the city)
- * - accommodation (per night)
- * - food (per day)
- * - user's activities (already in the trip)
- *
- * Returns structured JSON with per-stop breakdown + grand total.
- */
 export async function estimateTripBudget(trip) {
   // Build a compact trip summary to send to GPT
   const stopsSummary = trip.stops.map((stop) => {
@@ -109,7 +100,6 @@ Respond ONLY with a valid JSON object in this exact shape, no markdown, no expla
     }
   }
 
-  // Strip markdown code fences if GPT wraps with them
   raw = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
 
   const match = raw.match(/\{[\s\S]*\}/);

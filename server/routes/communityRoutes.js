@@ -6,7 +6,6 @@ import { userModel } from "../models/user.model.js";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 
-// Community Post Schema inside MongoDB
 const communityPostSchema = new mongoose.Schema({
   userId: { type: String, required: false },
   userName: { type: String, required: true },
@@ -46,7 +45,6 @@ function getPlaceImageUrl(placeName = "") {
   return "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800";
 }
 
-// Helper to extract optional auth user without throwing error
 function getAuthUser(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
@@ -58,14 +56,12 @@ function getAuthUser(req) {
   }
 }
 
-// GET /api/community - Fetch strictly REAL community posts created by users
 router.get("/", async (req, res) => {
   try {
     const { search, sort } = req.query;
 
     let dbPosts = await CommunityPost.find().sort({ createdAt: -1 }).lean();
 
-    // Search filter
     if (search && search.trim()) {
       const q = search.toLowerCase();
       dbPosts = dbPosts.filter(p => 
@@ -76,7 +72,6 @@ router.get("/", async (req, res) => {
       );
     }
 
-    // Sort options
     if (sort === "popular") {
       dbPosts.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
     } else if (sort === "rating") {
@@ -90,7 +85,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/community - Create a REAL travel note by a logged-in user
 router.post("/", async (req, res) => {
   try {
     const authUser = getAuthUser(req);
@@ -142,7 +136,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// POST /api/community/:id/like - Like a real post
 router.post("/:id/like", async (req, res) => {
   try {
     const authUser = getAuthUser(req);

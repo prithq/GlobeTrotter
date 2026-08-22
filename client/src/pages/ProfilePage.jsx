@@ -14,7 +14,8 @@ import {
   HiExclamationCircle,
   HiCalendar,
   HiLocationMarker,
-  HiChevronRight
+  HiChevronRight,
+  HiLogout
 } from 'react-icons/hi';
 import { toast } from 'react-hot-toast';
 
@@ -98,6 +99,12 @@ const ProfilePage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully 👋');
+    navigate('/login');
   };
 
   const handleDeleteAccount = async () => {
@@ -207,6 +214,13 @@ const ProfilePage = () => {
               <span className="text-sm font-semibold text-gray-700 hidden sm:inline">
                 {user?.name || 'Traveler'}
               </span>
+              <button
+                onClick={handleLogout}
+                className="bg-red-50 hover:bg-red-100 text-red-600 px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors border border-red-200"
+              >
+                <HiLogout className="h-4 w-4 text-red-600" />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
@@ -329,7 +343,7 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex flex-wrap items-center gap-3">
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -343,6 +357,15 @@ const ProfilePage = () => {
                         Save Changes
                       </>
                     )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 px-6 py-3 rounded-xl font-bold transition-all text-sm border border-red-200 shadow-xs"
+                  >
+                    <HiLogout className="h-5 w-5 text-red-600" />
+                    Logout Account
                   </button>
                 </div>
               </form>

@@ -36,6 +36,4 @@ app.use("/api/cities", cityRoutes);
 app.use("/api/suggest", suggestRoutes);
 app.use("/api/community", communityRoutes);
 
-const PORT = process.env.PORT || 8000;
-
 export default app;

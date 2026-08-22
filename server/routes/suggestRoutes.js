@@ -11,11 +11,6 @@ const openai = new OpenAI({
   apiKey: process.env.AZURE_OPENAI_API_KEY || "placeholder",
 });
 
-/**
- * POST /api/suggest/optimize-route
- * Reorders a set of destinations geographically to minimize travel distance & budget.
- * Body: { origin: "Gujarat", destinations: ["Bangalore", "Mumbai"] }
- */
 router.post("/optimize-route", async (req, res) => {
   try {
     const { origin, destinations } = req.body;
@@ -84,10 +79,6 @@ Respond ONLY with a valid JSON object in this exact shape, no markdown:
   }
 });
 
-/**
- * GET /api/suggest/stops?from=Paris&to=Rome
- * Suggests 4 intermediate city stops lying on or near the travel route.
- */
 router.get("/stops", async (req, res) => {
   try {
     const { from, to, route } = req.query;
@@ -158,11 +149,6 @@ Keep explanations under 15 words per item. Return exactly 4 items.
   }
 });
 
-/**
- * POST /api/suggest/budget
- * Real-time AI budget estimate for arbitrary proposed trip stops.
- * Body: { stops: [{ cityName: "Paris", days: 3 }, { cityName: "Rome", days: 4 }] }
- */
 router.post("/budget", async (req, res) => {
   try {
     const { stops } = req.body;
@@ -230,10 +216,6 @@ Respond ONLY with a valid JSON object in this exact shape, no markdown, no extra
   }
 });
 
-/**
- * GET /api/suggest?place=Goa
- * Returns top 6 places to visit in the given city/place.
- */
 router.get("/", async (req, res) => {
   try {
     const { place } = req.query;
@@ -272,7 +254,6 @@ Keep each sentence under 15 words. Return exactly 6 items.
       });
     }
 
-    // Extract text from response
     let raw = "";
     for (const item of response.output) {
       if (item.type === "message") {
@@ -283,8 +264,6 @@ Keep each sentence under 15 words. Return exactly 6 items.
         }
       }
     }
-
-    // Strip markdown fences if present
     raw = raw.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim();
 
     let suggestions = [];
