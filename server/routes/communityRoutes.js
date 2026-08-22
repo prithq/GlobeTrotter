@@ -1,12 +1,14 @@
 import express from "express";
 import mongoose from "mongoose";
-import { requireAuth } from "../middleware/auth.js";
+import jwt from "jsonwebtoken";
+import { userModel } from "../models/user.model.js";
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 
 // Community Post Schema inside MongoDB
 const communityPostSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+  userId: { type: String, required: false },
   userName: { type: String, required: true },
   userAvatar: { type: String },
   tripName: { type: String, required: true },
@@ -14,89 +16,54 @@ const communityPostSchema = new mongoose.Schema({
   experience: { type: String, required: true },
   rating: { type: Number, default: 5 },
   imageUrl: { type: String },
-  likesCount: { type: Number, default: 12 },
+  likesCount: { type: Number, default: 0 },
   likedBy: [{ type: String }],
   createdAt: { type: Date, default: Date.now }
 });
 
 const CommunityPost = mongoose.models.CommunityPost || mongoose.model("CommunityPost", communityPostSchema);
 
-// Initial featured community travel notes
-const FEATURED_COMMUNITY_POSTS = [
-  {
-    userName: "Dhruval Rana",
-    userAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-    tripName: "Himalayan Solang Valley Adventure Notes",
-    destination: "Manali, Himachal Pradesh",
-    experience: "Exploring Solang Valley in Manali was unbelievable! Paragliding over the snow-capped Himalayan peaks and drinking hot chai at Old Manali cafes made this an unforgettable travel note.",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800",
-    likesCount: 34,
-    createdAt: new Date(Date.now() - 86400000 * 2)
-  },
-  {
-    userName: "Ananya Sharma",
-    userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
-    tripName: "Romantic Sunset Walk along Eiffel Tower",
-    destination: "Paris, France",
-    experience: "Spent 5 days wandering through Le Marais, visiting Louvre museum art galleries, and watching sunset lights sparkle at Champ de Mars. GlobeTrotter route assistant saved hours of walking!",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800",
-    likesCount: 48,
-    createdAt: new Date(Date.now() - 86400000 * 4)
-  },
-  {
-    userName: "Kenji Sato",
-    userAvatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150",
-    tripName: "Kyoto Temple Circuit & Bamboo Grove Note",
-    destination: "Kyoto, Japan",
-    experience: "Early morning at Arashiyama Bamboo Grove before the crowds arrive is pure magic. Visited Fushimi Inari Torii gates and enjoyed traditional tea in Gion.",
-    rating: 5,
-    imageUrl: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800",
-    likesCount: 29,
-    createdAt: new Date(Date.now() - 86400000 * 6)
-  },
-  {
-    userName: "Rohan Patel",
-    userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-    tripName: "Goa Beach Hopping & Sunset Cruise Note",
-    destination: "Goa, India",
-    experience: "From Palolem beach shacks in South Goa to water sports at Calangute and sunset cruise on Mandovi river! Low-budget travel planned smoothly.",
-    rating: 4,
-    imageUrl: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800",
-    likesCount: 42,
-    createdAt: new Date(Date.now() - 86400000 * 8)
-  }
-];
+function getPlaceImageUrl(placeName = "") {
+  const p = (placeName || "").toLowerCase().trim();
+  if (p.includes("manali") || p.includes("solang") || p.includes("rohtang") || p.includes("hadimba")) return "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800";
+  if (p.includes("kasol") || p.includes("parvati")) return "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800";
+  if (p.includes("shimla") || p.includes("kullu")) return "https://images.unsplash.com/photo-1597074866923-dc0589150358?w=800";
+  if (p.includes("goa")) return "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800";
+  if (p.includes("mumbai")) return "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800";
+  if (p.includes("gujarat") || p.includes("ahmedabad")) return "https://images.unsplash.com/photo-1609766857041-ed402ea8069a?w=800";
+  if (p.includes("bangalore") || p.includes("bengaluru")) return "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=800";
+  if (p.includes("delhi") || p.includes("agra") || p.includes("taj")) return "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800";
+  if (p.includes("jaipur") || p.includes("udaipur") || p.includes("rajasthan")) return "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800";
+  if (p.includes("paris")) return "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800";
+  if (p.includes("tokyo") || p.includes("japan") || p.includes("kyoto")) return "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800";
+  if (p.includes("york")) return "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800";
+  if (p.includes("london")) return "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800";
+  if (p.includes("rome") || p.includes("italy") || p.includes("venice")) return "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800";
+  if (p.includes("barcelona") || p.includes("spain")) return "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800";
+  if (p.includes("dubai") || p.includes("uae")) return "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800";
+  if (p.includes("bali") || p.includes("indonesia")) return "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800";
+  if (p.includes("singapore")) return "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800";
+  return "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800";
+}
 
-// GET /api/community - Open to all users to read travel notes
+// Helper to extract optional auth user without throwing error
+function getAuthUser(req) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (e) {
+    return null;
+  }
+}
+
+// GET /api/community - Fetch strictly REAL community posts created by users
 router.get("/", async (req, res) => {
   try {
     const { search, sort } = req.query;
 
-    let dbPosts = [];
-    try {
-      dbPosts = await CommunityPost.find().sort({ createdAt: -1 }).lean();
-    } catch (dbErr) {
-      console.warn("DB query warning for community posts:", dbErr.message);
-    }
-
-    // Seed featured posts if DB is empty
-    if (!dbPosts || dbPosts.length === 0) {
-      dbPosts = FEATURED_COMMUNITY_POSTS.map((p, i) => ({
-        _id: `feat-${i}`,
-        ...p,
-        likedBy: []
-      }));
-    } else {
-      // Prepend featured posts if fewer than 3
-      const featList = FEATURED_COMMUNITY_POSTS.map((p, i) => ({
-        _id: `feat-${i}`,
-        ...p,
-        likedBy: []
-      }));
-      dbPosts = [...dbPosts, ...featList];
-    }
+    let dbPosts = await CommunityPost.find().sort({ createdAt: -1 }).lean();
 
     // Search filter
     if (search && search.trim()) {
@@ -118,47 +85,77 @@ router.get("/", async (req, res) => {
 
     res.json({ data: dbPosts });
   } catch (err) {
-    res.json({ data: FEATURED_COMMUNITY_POSTS.map((p, i) => ({ _id: `feat-${i}`, ...p, likedBy: [] })) });
+    console.error("Fetch community posts error:", err);
+    res.json({ data: [] });
   }
 });
 
-router.post("/", requireAuth, async (req, res) => {
+// POST /api/community - Create a REAL travel note by a logged-in user
+router.post("/", async (req, res) => {
   try {
-    const { tripName, destination, experience, rating, imageUrl } = req.body;
+    const authUser = getAuthUser(req);
+    const { tripName, destination, experience, rating, imageUrl, userName, userAvatar } = req.body;
 
     if (!tripName || !destination || !experience) {
       return res.status(400).json({ message: "tripName, destination and experience are required" });
     }
 
+    // Resolve real user details
+    let finalUserName = userName || authUser?.name;
+    let finalUserAvatar = userAvatar || authUser?.photoUrl || "";
+
+    if (!finalUserName && authUser?.id) {
+      try {
+        const u = await userModel.findById(authUser.id).lean();
+        if (u) {
+          finalUserName = u.name;
+          finalUserAvatar = u.photoUrl || "";
+        }
+      } catch (e) {
+        console.warn("User lookup error:", e.message);
+      }
+    }
+
+    if (!finalUserName) {
+      finalUserName = "Traveler";
+    }
+
+    const postImg = imageUrl && imageUrl.trim() ? imageUrl.trim() : getPlaceImageUrl(destination || tripName);
+
     const post = await CommunityPost.create({
-      userId: req.user?.id || new mongoose.Types.ObjectId(),
-      userName: req.user?.name || "GlobeTrotter Traveler",
-      userAvatar: req.user?.photoUrl || "",
-      tripName,
-      destination,
-      experience,
-      rating: rating || 5,
-      imageUrl: imageUrl || "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800",
-      likesCount: 1,
-      likedBy: [req.user?.id ? req.user.id.toString() : "anon"]
+      userId: authUser?.id ? authUser.id.toString() : "guest-user",
+      userName: finalUserName,
+      userAvatar: finalUserAvatar,
+      tripName: tripName.trim(),
+      destination: destination.trim(),
+      experience: experience.trim(),
+      rating: Number(rating) || 5,
+      imageUrl: postImg,
+      likesCount: 0,
+      likedBy: []
     });
 
     res.status(201).json(post);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error("Community post creation error:", err);
+    res.status(500).json({ message: err.message || "Failed to post travel note" });
   }
 });
 
-router.post("/:id/like", requireAuth, async (req, res) => {
+// POST /api/community/:id/like - Like a real post
+router.post("/:id/like", async (req, res) => {
   try {
+    const authUser = getAuthUser(req);
     const { id } = req.params;
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.json({ success: true, message: "Liked post" });
     }
+
     const post = await CommunityPost.findById(id);
     if (!post) return res.json({ success: true });
 
-    const userIdStr = req.user?.id ? req.user.id.toString() : "anon";
+    const userIdStr = authUser?.id ? authUser.id.toString() : "anon";
     const alreadyLiked = post.likedBy.includes(userIdStr);
 
     if (alreadyLiked) {

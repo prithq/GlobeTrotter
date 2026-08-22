@@ -11,10 +11,10 @@ import {
   HiShare, 
   HiStar, 
   HiLocationMarker, 
-  HiSparkles,
   HiX,
   HiBookOpen,
-  HiPencilAlt
+  HiPencilAlt,
+  HiUser
 } from 'react-icons/hi';
 import { toast } from 'react-hot-toast';
 
@@ -48,11 +48,10 @@ const CommunityPage = () => {
     setIsLoading(true);
     try {
       const response = await axiosInstance.get('/community');
-      if (response.data?.data) {
-        setPosts(response.data.data);
-      }
+      setPosts(response.data?.data || []);
     } catch (err) {
-      console.warn('Community feed load error, using default travel notes:', err.message);
+      console.warn('Community feed load error:', err.message);
+      setPosts([]);
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +79,7 @@ const CommunityPage = () => {
   };
 
   const handleSharePost = (post) => {
-    const shareText = `Check out "${post.tripName}" note in ${post.destination} on GlobeTrotter!`;
+    const shareText = `Check out "${post.tripName}" travel note by ${post.userName} in ${post.destination} on GlobeTrotter!`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(`${shareText} ${window.location.href}`);
       toast.success('Travel note link copied to clipboard!');
@@ -96,15 +95,20 @@ const CommunityPage = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await axiosInstance.post('/community', newPost);
+      const payload = {
+        ...newPost,
+        userName: user?.name || 'Traveler',
+        userAvatar: user?.photoUrl || ''
+      };
+      const response = await axiosInstance.post('/community', payload);
       if (response.data) {
-        toast.success('Travel note shared with community! ✈️');
+        toast.success('Travel note published successfully! ✈️');
         setPosts([response.data, ...posts]);
         setShowNewPostModal(false);
         setNewPost({ tripName: '', destination: '', experience: '', rating: 5, imageUrl: '' });
       }
     } catch (err) {
-      toast.error('Failed to post note');
+      toast.error(err.response?.data?.message || 'Failed to post note');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,6 +143,12 @@ const CommunityPage = () => {
 
     return result;
   }, [posts, searchQuery, selectedFilter, selectedSortBy]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Just now';
+    const d = new Date(dateString);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -177,7 +187,7 @@ const CommunityPage = () => {
               <span>🌍</span> Community
             </h1>
             <p className="text-gray-600 text-sm mt-1 max-w-2xl">
-              Discover travel stories shared as personal notes by fellow travelers. Search, filter, and share your own travel notes with the GlobeTrotter community!
+              Read real travel notes published by actual GlobeTrotter travelers. Share your journey notes and experiences with fellow users!
             </p>
           </div>
           <button
@@ -200,7 +210,7 @@ const CommunityPage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search bar ...... (search travel notes, destinations, or authors)"
+                placeholder="Search bar ...... (search travel notes, destinations, or author names)"
                 className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-medium text-gray-900 placeholder-gray-400"
               />
             </div>
@@ -237,7 +247,7 @@ const CommunityPage = () => {
           </div>
         </div>
 
-        {/* Travel Stories Shared as Notes (Screen 10 Format) */}
+        {/* Real User Travel Notes Feed */}
         {isLoading ? (
           <div className="space-y-6">
             {[1, 2, 3].map(i => (
@@ -247,11 +257,11 @@ const CommunityPage = () => {
         ) : filteredPosts.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-12 text-center border border-gray-100">
             <div className="text-6xl mb-4">📝</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No travel notes found</h3>
-            <p className="text-gray-600 text-sm mb-6">Be the first traveler to share a note about your trip!</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No community travel notes posted yet</h3>
+            <p className="text-gray-600 text-sm mb-6">Be the first traveler to post a travel note with your name for the community!</p>
             <button
               onClick={() => setShowNewPostModal(true)}
-              className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-xs"
+              className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-xs shadow-md"
             >
               <HiPlus className="h-4 w-4 mr-2" /> Write a Travel Note
             </button>
@@ -265,7 +275,7 @@ const CommunityPage = () => {
                   key={post._id}
                   className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border-l-4 border-l-blue-600 border border-gray-100 space-y-4 relative"
                 >
-                  {/* Note Header */}
+                  {/* Note Author Header with Prominent User Name */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       {post.userAvatar ? (
@@ -276,19 +286,21 @@ const CommunityPage = () => {
                         />
                       ) : (
                         <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center shadow-sm">
-                          {post.userName?.charAt(0) || 'T'}
+                          {post.userName?.charAt(0) || 'U'}
                         </div>
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-gray-900 text-base">{post.userName}</h3>
+                          <h3 className="font-extrabold text-gray-900 text-base">{post.userName}</h3>
                           <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                             Travel Note
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
                           <HiLocationMarker className="h-3.5 w-3.5 text-blue-500" />
-                          {post.destination}
+                          <span className="font-semibold text-gray-700">{post.destination}</span>
+                          <span>•</span>
+                          <span>{formatDate(post.createdAt)}</span>
                         </p>
                       </div>
                     </div>
@@ -299,17 +311,17 @@ const CommunityPage = () => {
                     </div>
                   </div>
 
-                  {/* Note Title & Content Card */}
+                  {/* Note Title & Experience Content */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50/30 p-4 rounded-xl border border-gray-100">
                     <h4 className="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
                       <HiBookOpen className="h-5 w-5 text-blue-600" /> {post.tripName}
                     </h4>
-                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line font-normal italic">
+                    <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-line font-medium italic">
                       "{post.experience}"
                     </p>
                   </div>
 
-                  {/* Image attachment if available */}
+                  {/* Attachment Image */}
                   {post.imageUrl && (
                     <div className="h-60 sm:h-72 rounded-2xl overflow-hidden bg-gray-100 border border-gray-100">
                       <img
@@ -367,6 +379,21 @@ const CommunityPage = () => {
               >
                 <HiX className="h-6 w-6" />
               </button>
+            </div>
+
+            {/* Displaying Current Author Name */}
+            <div className="bg-blue-50/50 p-3 rounded-xl flex items-center gap-3 border border-blue-100">
+              {user?.photoUrl ? (
+                <img src={user.photoUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+                  {user?.name?.charAt(0) || 'U'}
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Posting as:</p>
+                <p className="text-sm font-extrabold text-gray-900">{user?.name || 'Traveler'}</p>
+              </div>
             </div>
 
             <form onSubmit={handleCreatePostSubmit} className="space-y-4">
