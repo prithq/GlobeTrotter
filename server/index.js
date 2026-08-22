@@ -1,39 +1,48 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import tripRoutes from "./routes/tripRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
 
-dotenv.config();
+import authRoutes from "./routes/authRoutes.js";
+import tripRoutes from "./routes/tripRoutes.js";
 
 const app = express();
 
 app.use(express.json());
 
-app.use(cors({
-  origin: "http://localhost:5173",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+  })
+);
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "GlobeTrotter API is running"
+  });
+});
 
 app.get("/health", (req, res) => {
-  res.send("working");
+  res.json({
+    status: "OK"
+  });
 });
 
 app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 
-const PORT = process.env.PORT || 8000;
-
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB connected");
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1);
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Route not found"
   });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+
+  res.status(500).json({
+    message: "Something went wrong on the server"
+  });
+});
 
 export default app;
