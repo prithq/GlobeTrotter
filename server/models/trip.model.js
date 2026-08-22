@@ -33,6 +33,11 @@ const Trip = new schema({
     type: String
   },
 
+  targetBudget: {
+    type: Number,
+    default: 0
+  },
+
   isPublic: {
     type: Boolean,
     default: false

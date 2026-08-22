@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { tripAPI } from '../api/trips';
 import { cityAPI } from '../api/cities';
 import { activityAPI } from '../api/activity';
+import { suggestAPI } from '../api/suggest';
 import { 
   HiArrowLeft, 
   HiPlus, 
@@ -14,7 +15,9 @@ import {
   HiChevronDown,
   HiChevronUp,
   HiTrash,
-  HiClock
+  HiClock,
+  HiSparkles,
+  HiLightBulb
 } from 'react-icons/hi';
 import { 
   FaPlane, 
@@ -50,6 +53,16 @@ const ItineraryBuilderPage = () => {
     cost: 0
   });
 
+  // Realtime AI Assistant state
+  const [isSuggestingRoute, setIsSuggestingRoute] = useState(false);
+  const [isOptimizingTripRoute, setIsOptimizingTripRoute] = useState(false);
+  const [routeStops, setRouteStops] = useState([]);
+  const [showRouteAssistant, setShowRouteAssistant] = useState(false);
+
+  const [activeCityForAISuggest, setActiveCityForAISuggest] = useState(null);
+  const [isSuggestingPlaces, setIsSuggestingPlaces] = useState(false);
+  const [aiPlaceSuggestions, setAiPlaceSuggestions] = useState([]);
+
   useEffect(() => {
     loadTripData();
   }, [tripId]);
@@ -73,7 +86,7 @@ const ItineraryBuilderPage = () => {
   };
 
   const handleAddStop = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!selectedCityId || !stopStartDate || !stopEndDate) {
       toast.error('Please select a city and dates');
       return;
@@ -100,6 +113,34 @@ const ItineraryBuilderPage = () => {
     }
   };
 
+  const handleAddRouteStopDirectly = async (cityName) => {
+    const matchedCity = cities.find(c => c.name.toLowerCase() === cityName.toLowerCase()) || cities[0];
+    if (!matchedCity) return;
+
+    // Calculate dates after last stop or trip start
+    const lastStop = trip.stops?.[trip.stops.length - 1];
+    let startDate = trip.startDate ? new Date(trip.startDate) : new Date();
+    if (lastStop && lastStop.endDate) {
+      startDate = new Date(lastStop.endDate);
+      startDate.setDate(startDate.getDate() + 1);
+    }
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 2);
+
+    try {
+      const response = await tripAPI.addStop(tripId, {
+        cityId: matchedCity._id,
+        cityName: cityName,
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: endDate.toISOString().slice(0, 10)
+      });
+      setTrip(response.data);
+      toast.success(`Added ${cityName} to your itinerary stops!`);
+    } catch (err) {
+      toast.error('Failed to add route stop');
+    }
+  };
+
   const handleDeleteStop = async (stopId, cityName) => {
     if (!window.confirm(`Remove ${cityName} stop from trip?`)) return;
     try {
@@ -118,7 +159,7 @@ const ItineraryBuilderPage = () => {
     }
 
     const matchedAct = availableActivities.find(a => a.name.toLowerCase() === newActivity.name.toLowerCase());
-    const activityId = matchedAct?._id || "64f1a2b3c4d5e6f7a8b9c0d2"; // fallback valid objectid
+    const activityId = matchedAct?._id || "64f1a2b3c4d5e6f7a8b9c0d2";
 
     try {
       const response = await tripAPI.addActivity(tripId, stopId, {
@@ -145,6 +186,24 @@ const ItineraryBuilderPage = () => {
     }
   };
 
+  const handleAddAISuggestedActivity = async (stop, placeSuggestion) => {
+    const activityId = "64f1a2b3c4d5e6f7a8b9c0d2";
+    try {
+      const response = await tripAPI.addActivity(tripId, stop._id, {
+        activityId,
+        name: placeSuggestion.name,
+        category: 'sightseeing',
+        scheduledDate: stop.startDate ? new Date(stop.startDate).toISOString().slice(0, 10) : undefined,
+        scheduledTime: '10:00',
+        cost: 25
+      });
+      setTrip(response.data);
+      toast.success(`Added "${placeSuggestion.name}" to ${stop.cityName}!`);
+    } catch (err) {
+      toast.error('Failed to add AI suggested activity');
+    }
+  };
+
   const handleDeleteActivity = async (stopId, activityId, actName) => {
     try {
       const response = await tripAPI.deleteActivity(tripId, stopId, activityId);
@@ -152,6 +211,42 @@ const ItineraryBuilderPage = () => {
       toast.success(`Removed ${actName}`);
     } catch (error) {
       toast.error('Failed to delete activity');
+    }
+  };
+
+  const handleFetchRouteStops = async () => {
+    if (!trip.stops || trip.stops.length < 2) {
+      toast.error('Need at least 2 city stops to calculate intermediate route stops');
+      return;
+    }
+    const from = trip.stops[0].cityName;
+    const to = trip.stops[trip.stops.length - 1].cityName;
+
+    setIsSuggestingRoute(true);
+    setShowRouteAssistant(true);
+    try {
+      const response = await suggestAPI.getRouteStops(from, to);
+      setRouteStops(response.data.suggestedStops || []);
+      toast.success(`Fetched intermediate stops along route from ${from} to ${to}`);
+    } catch (err) {
+      toast.error('Failed to get route stops from AI');
+    } finally {
+      setIsSuggestingRoute(false);
+    }
+  };
+
+  const handleFetchCityAttractions = async (stop) => {
+    setActiveCityForAISuggest(stop.stopId || stop._id);
+    setIsSuggestingPlaces(true);
+    try {
+      const response = await suggestAPI.getSuggestions(stop.cityName);
+      setAiPlaceSuggestions(response.data.suggestions || []);
+      toast.success(`Fetched AI attractions for ${stop.cityName}!`);
+    } catch (err) {
+      toast.error('Failed to get attractions from AI');
+      setAiPlaceSuggestions([]);
+    } finally {
+      setIsSuggestingPlaces(false);
     }
   };
 
@@ -173,6 +268,23 @@ const ItineraryBuilderPage = () => {
     }, 0);
   };
 
+  const handleOptimizeTripRoute = async () => {
+    if (!trip?.stops || trip.stops.length < 2) {
+      toast.error('Need at least 2 city stops to optimize route sequence');
+      return;
+    }
+    setIsOptimizingTripRoute(true);
+    try {
+      const response = await tripAPI.optimizeTripRoute(tripId);
+      setTrip(response.data);
+      toast.success('Route reordered geographically for lowest travel cost!');
+    } catch (err) {
+      toast.error('Failed to optimize trip route');
+    } finally {
+      setIsOptimizingTripRoute(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -191,10 +303,14 @@ const ItineraryBuilderPage = () => {
               <Link to="/dashboard" className="text-gray-600 hover:text-gray-800">
                 <HiArrowLeft className="h-6 w-6" />
               </Link>
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">🌍</span>
-                <h1 className="text-xl font-bold text-blue-600">GlobeTrotter</h1>
-              </div>
+              <Link to="/dashboard" className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg shadow-sm">
+                  ✈️
+                </div>
+                <span className="text-xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+                  GlobeTrotter
+                </span>
+              </Link>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 hidden sm:inline">
@@ -214,11 +330,71 @@ const ItineraryBuilderPage = () => {
               {formatDate(trip?.startDate)} - {formatDate(trip?.endDate)}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Activities Cost</p>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(calculateTotalCost())}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            {trip?.stops?.length >= 2 && (
+              <button
+                onClick={handleOptimizeTripRoute}
+                disabled={isOptimizingTripRoute}
+                className="px-3.5 py-2.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold hover:bg-amber-100 flex items-center gap-1.5 disabled:opacity-50"
+                title="Geographically reorder stops for lowest travel cost (e.g. Gujarat -> Mumbai -> Bangalore)"
+              >
+                <HiSparkles className="h-4 w-4 text-amber-600" />
+                {isOptimizingTripRoute ? 'Optimizing Route...' : '⚡ Optimize Route Order'}
+              </button>
+            )}
+            <button
+              onClick={handleFetchRouteStops}
+              disabled={isSuggestingRoute}
+              className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 shadow-md flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <HiSparkles className="h-4 w-4" /> Route Assistant
+            </button>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Activities Total</p>
+              <p className="text-xl font-bold text-blue-600">{formatCurrency(calculateTotalCost())}</p>
+            </div>
           </div>
         </div>
+
+        {/* Real-time AI Route Assistant Drawer */}
+        {showRouteAssistant && (
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl shadow-md p-6 border-2 border-emerald-200 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <HiSparkles className="h-6 w-6 text-emerald-600" />
+                <h2 className="text-xl font-bold text-gray-900">AI Route Stop Recommendations</h2>
+              </div>
+              <button onClick={() => setShowRouteAssistant(false)} className="text-gray-400 hover:text-gray-600">
+                <HiX className="h-6 w-6" />
+              </button>
+            </div>
+
+            {isSuggestingRoute ? (
+              <div className="text-center py-6">
+                <p className="text-emerald-700 font-medium">Analyzing travel route using OpenAI...</p>
+              </div>
+            ) : routeStops.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {routeStops.map((stop, idx) => (
+                  <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100 flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-900">{stop.name}, {stop.country}</h4>
+                      <p className="text-xs text-gray-600 mt-1">{stop.why}</p>
+                    </div>
+                    <button
+                      onClick={() => handleAddRouteStopDirectly(stop.name)}
+                      className="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shrink-0"
+                    >
+                      + Add Stop
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-center py-2">Click "AI Route Assistant" to discover stops along your route.</p>
+            )}
+          </div>
+        )}
 
         {/* City Stops list */}
         <div className="space-y-6">
@@ -238,6 +414,12 @@ const ItineraryBuilderPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => handleFetchCityAttractions(stop)}
+                    className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg text-xs font-semibold flex items-center gap-1"
+                  >
+                    <HiLightBulb className="h-4 w-4" /> Realtime AI Attractions
+                  </button>
+                  <button
                     onClick={() => handleDeleteStop(stop._id, stop.cityName)}
                     className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                     title="Delete Stop"
@@ -246,6 +428,42 @@ const ItineraryBuilderPage = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Realtime AI Place Suggestions Drawer for this stop */}
+              {activeCityForAISuggest === stop._id && (
+                <div className="p-5 bg-purple-50/70 border-b border-purple-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-purple-900 text-sm flex items-center gap-1.5">
+                      <HiSparkles className="h-4 w-4 text-purple-600" /> OpenAI Suggested Attractions for {stop.cityName}
+                    </h4>
+                    <button onClick={() => setActiveCityForAISuggest(null)} className="text-gray-400 hover:text-gray-600 text-xs">
+                      Close
+                    </button>
+                  </div>
+                  {isSuggestingPlaces ? (
+                    <p className="text-xs text-purple-700 italic">Searching top places in real-time...</p>
+                  ) : aiPlaceSuggestions.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {aiPlaceSuggestions.map((place, pIdx) => (
+                        <div key={pIdx} className="bg-white p-3 rounded-lg border border-purple-100 flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900 text-xs">{place.name}</p>
+                            <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{place.what}</p>
+                          </div>
+                          <button
+                            onClick={() => handleAddAISuggestedActivity(stop, place)}
+                            className="ml-2 px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium shrink-0"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">No suggestions available for {stop.cityName}.</p>
+                  )}
+                </div>
+              )}
 
               {/* Stop Activities */}
               <div className="p-5">
@@ -267,7 +485,7 @@ const ItineraryBuilderPage = () => {
                     }}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
                   >
-                    <HiPlus className="h-4 w-4" /> Add Activity
+                    <HiPlus className="h-4 w-4" /> Add Custom Activity
                   </button>
                 </div>
 
@@ -308,10 +526,10 @@ const ItineraryBuilderPage = () => {
                 {/* Add Activity Form inside stop */}
                 {activeStopIdForActivity === stop._id && (
                   <div className="mt-4 p-4 border border-blue-200 rounded-xl bg-blue-50/50">
-                    <h4 className="font-semibold text-gray-900 text-sm mb-3">Add Activity to {stop.cityName}</h4>
+                    <h4 className="font-semibold text-gray-900 text-sm mb-3">Add Custom Activity to {stop.cityName}</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Select / Enter Activity</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Activity Name</label>
                         <input
                           type="text"
                           value={newActivity.name}
@@ -377,7 +595,7 @@ const ItineraryBuilderPage = () => {
           ))}
         </div>
 
-        {/* Add Stop Button / Form */}
+        {/* Add Stop Form */}
         {!showAddStop ? (
           <button
             onClick={() => setShowAddStop(true)}

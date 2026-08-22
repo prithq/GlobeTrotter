@@ -93,6 +93,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute>
+            <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/trip/:tripId/calendar"
         element={
           <ProtectedRoute>

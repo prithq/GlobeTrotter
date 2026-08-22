@@ -24,6 +24,9 @@ export const tripAPI = {
   
   getItinerary: (tripId) => 
     axiosInstance.get(`/trips/${tripId}/itinerary`),
+
+  optimizeTripRoute: (tripId) =>
+    axiosInstance.post(`/trips/${tripId}/optimize-route`),
   
   getCalendar: (tripId) => 
     axiosInstance.get(`/trips/${tripId}/calendar`),

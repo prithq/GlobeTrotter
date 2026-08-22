@@ -140,7 +140,7 @@ const BudgetPage = () => {
             className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-2.5 rounded-lg font-medium transition-colors hover:from-purple-600 hover:to-blue-600 flex items-center gap-2"
           >
             <HiTrendingUp className="h-5 w-5" />
-            Get AI Estimate
+            Estimate Budget
           </button>
         </div>
 

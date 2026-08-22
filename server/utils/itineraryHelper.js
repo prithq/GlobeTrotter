@@ -25,7 +25,7 @@ export function buildItinerary(trip) {
 
         const activities = [...(stop.activities || [])]
           .filter((a) => {
-            if (!a.scheduledDate) return false;
+            if (!a.scheduledDate) return idx === 0;
             return new Date(a.scheduledDate).toISOString().slice(0, 10) === date;
           })
           .sort((a, b) => {
